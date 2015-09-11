@@ -22,12 +22,13 @@
 #      (at your option) any later version.
 #******************************************************************************
 
-REPO_TRUNK=https://github.com/mefistotelis/keeperfx.git
+REPO_TRUNK=https://github.com/dkfans/keeperfx-stable.git
 # Set values of env. variables to default if they're not set
 HOMEDIR=${HOMEDIR:-~}
-WORKDIR=${WORKDIR:-${HOMEDIR}/nightly/keeperfx}
-RESEASEDIR=${RESEASEDIR:-${HOMEDIR}/public_html/keeper/nightly}
-CROSS_COMPILE_TOOLCHAIN=${CROSS_COMPILE_TOOLCHAIN:-i586-mingw32msvc-}
+WORKDIR=${WORKDIR:-${HOMEDIR}/nightly/keeperfx-stable}
+RESEASEDIR=${RESEASEDIR:-${HOMEDIR}/public_html/keeper/nightly-stable}
+PATH=~/local/bin:$PATH
+CROSS_COMPILE_TOOLCHAIN=${CROSS_COMPILE_TOOLCHAIN:-"i686-pc-mingw32-"}
 
 LANG=C
 HASH="$1"
@@ -87,6 +88,18 @@ function keeperfxcheckout {
                 echo "Problem with git reset"
                 return 1
             fi
+            GITLOG=`cd "$WORKDIR" && git submodule init`
+            if [ $? != 0 ]; then
+                echo "$GITLOG"
+                echo "Problem with git submodule init"
+                return 1
+            fi
+    fi
+    GITLOG=`cd "$WORKDIR" && git submodule update`
+    if [ $? != 0 ]; then
+        echo "$GITLOG"
+        echo "Problem with git submodule update"
+        return 1
     fi
     echo "$GITLOG"
     HASH=`cd "$WORKDIR" && git rev-parse HEAD`
@@ -96,7 +109,7 @@ function keeperfxcheckout {
 }
 
 function keeperfxcancel {
-    PKGFILES="${RESEASEDIR}/keeperfx*_${REV}-patch.7z"
+    PKGFILES="${RESEASEDIR}/keeperfx*_${REV}-*-patch.7z"
     NOTEXISTS=1; for FILE in ${PKGFILES}; do test -f "${FILE}"; NOTEXISTS=$?; break; done
     if [ ! $NOTEXISTS -eq 0 ] ; then
         echo "No package like '${PKGFILES}', proceeding with build."
@@ -116,6 +129,10 @@ function keeperfxbuild {
     echo "Update build version to r${REV}"
     sed -i \
         -e "s,VER_BUILD=.\+,VER_BUILD=${REV}," \
+        $WORKDIR/version.mk
+
+    sed -i \
+        -e "s,PACKAGE_SUFFIX=.\+,PACKAGE_SUFFIX=git${HASH:0:7}," \
         $WORKDIR/version.mk
 
     # For old versions of GCC (< 4.7)
